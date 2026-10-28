@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="android:Theme.DeviceDefault.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">#0e1117</item>
+        <item name="android:statusBarColor">#0e1117</item>
+        <item name="android:navigationBarColor">#0e1117</item>
+    </style>
+</resources>

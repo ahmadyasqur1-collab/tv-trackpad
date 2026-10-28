@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="id"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0e1117">
+<title>TV Trackpad</title>
+<style>
+:root{
+  --bg:#0e1117; --pad:#151923; --edge:#262d3c; --key:#1b202b; --key-hi:#252c3b;
+  --text:#e9ebf2; --mute:#8a92a6; --acc:#9b8cff; --ok:#46d39a; --bad:#ff6b6b; --warn:#f5b84b;
+  --font:ui-rounded,"SF Pro Rounded",-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html{height:100%;background:var(--bg);overscroll-behavior:none}
+body{
+  margin:0;position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden;
+  background:var(--bg);color:var(--text);font:15px/1.3 var(--font);
+  display:flex;flex-direction:column;gap:10px;
+  padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+}
+html.rot body{padding:10px 12px;transform:rotate(90deg) translateY(-100%);transform-origin:0 0}
+
+/* ---------- Atas ---------- */
+#top{display:flex;align-items:center;gap:10px;flex:none;height:40px}
+#status{display:flex;align-items:center;gap:9px;min-width:0;flex:1;height:40px;padding:0 14px;border-radius:20px;background:var(--pad);border:1px solid var(--edge);color:var(--mute);font-size:13.5px;cursor:pointer}
+#dot{width:9px;height:9px;border-radius:50%;background:var(--bad);flex:none}
+#dot.wait{background:var(--warn)}
+#dot.ok{background:var(--ok);box-shadow:0 0 10px 1px rgba(70,211,154,.55)}
+#msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ico{flex:none;width:40px;height:40px;padding:0;border-radius:20px;display:grid;place-items:center;background:var(--pad);border:1px solid var(--edge);color:var(--mute);transition:background .12s,color .12s,border-color .12s}
+.ico svg{width:20px;height:20px}
+.ico.act{color:var(--acc);border-color:var(--acc)}
+.ico:active{background:var(--key-hi);color:var(--text)}
+
+/* ---------- Keyboard ---------- */
+#kbbar{display:none;flex:none;gap:8px}
+#kbbar.show{display:flex}
+#kb{flex:1;min-width:0;height:44px;font:inherit;font-size:16px;padding:0 16px;border-radius:22px;border:1px solid var(--acc);background:var(--pad);color:var(--text);outline:none;-webkit-user-select:text;user-select:text}
+#kb::placeholder{color:var(--mute)}
+#kbbar .ico{width:56px;height:44px;border-radius:22px}
+
+/* ---------- Tengah ---------- */
+#main{flex:1;min-height:0;display:grid;grid-template-columns:84px 1fr 84px;gap:10px}
+.rail{display:flex;flex-direction:column;gap:10px;min-height:0}
+.key{
+  flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  font:inherit;font-size:12.5px;color:var(--text);background:var(--key);border:1px solid var(--edge);border-radius:22px;padding:0;
+  transition:background .1s,transform .1s,border-color .1s
+}
+.key svg{width:28px;height:28px}
+.key span{color:var(--mute)}
+.key:active{background:var(--acc);border-color:var(--acc);color:#14112a;transform:scale(.97)}
+.key:active span{color:#14112a}
+
+/* Rocker volume */
+#rocker{flex:1;min-height:0;display:flex;flex-direction:column;border-radius:34px;background:var(--key);border:1px solid var(--edge);overflow:hidden}
+#rocker button{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:inherit;font-size:11.5px;color:var(--text);background:transparent;border:0;border-radius:0;padding:0;transition:background .1s}
+#rocker button svg{width:26px;height:26px}
+#rocker button span{color:var(--mute)}
+#rocker button+button{border-top:1px solid var(--edge)}
+#rocker button:active{background:var(--acc);color:#14112a}
+#rocker button:active span{color:#14112a}
+#rocker #mute{flex:.8}
+#rocker #mute svg{width:22px;height:22px}
+
+/* Trackpad */
+#pad{
+  position:relative;min-width:0;min-height:0;border-radius:30px;overflow:hidden;touch-action:none;
+  background:
+    radial-gradient(circle at 50% 40%,rgba(155,140,255,.07),transparent 60%),
+    radial-gradient(circle,rgba(255,255,255,.07) 1px,transparent 1.5px) 0 0/24px 24px,
+    var(--pad);
+  border:1px solid var(--edge);transition:border-color .15s,box-shadow .15s
+}
+#pad.on{border-color:var(--acc);box-shadow:inset 0 0 40px rgba(155,140,255,.12)}
+#hint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;color:var(--mute);font-size:13.5px;pointer-events:none;transition:opacity .25s}
+#hint b{display:block;color:var(--text);font-weight:600;font-size:15px;margin-bottom:2px}
+#pad.on #hint{opacity:0}
+#fingers{position:absolute;left:16px;bottom:12px;font-size:13px;color:var(--acc);pointer-events:none}
+#toast{position:absolute;left:50%;top:14px;transform:translate(-50%,-8px);padding:7px 14px;border-radius:16px;background:var(--key-hi);color:var(--text);font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;white-space:nowrap}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+#glow{position:absolute;left:0;top:0;width:90px;height:90px;margin:-45px 0 0 -45px;border-radius:50%;pointer-events:none;opacity:0;
+  background:radial-gradient(circle,rgba(155,140,255,.38),rgba(155,140,255,0) 68%);transition:opacity .15s;z-index:5;will-change:transform}
+#glow.on{opacity:1}
+
+/* ---------- Modal Koneksi TV (Auto-scan + Manual) ---------- */
+#tvmodal{position:fixed;inset:0;background:rgba(8,10,15,.82);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+#tvmodal.show{display:flex}
+.mcard{width:100%;max-width:440px;max-height:92%;overflow-y:auto;background:var(--pad);border:1px solid var(--edge);border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 16px 48px rgba(0,0,0,.5)}
+.mhead{display:flex;align-items:center;justify-content:space-between}
+.mhead b{font-size:16px;color:var(--text)}
+.mclose{background:var(--key);border:1px solid var(--edge);color:var(--mute);border-radius:14px;padding:5px 12px;font:inherit;font-size:13px}
+.mrow{display:flex;gap:8px}
+.minp{flex:1;min-width:0;height:40px;border-radius:14px;border:1px solid var(--edge);background:var(--bg);color:var(--text);padding:0 14px;font:inherit;font-size:14.5px;outline:none;-webkit-user-select:text;user-select:text}
+.minp:focus{border-color:var(--acc)}
+.mbtn{height:40px;padding:0 16px;border-radius:14px;border:0;background:var(--acc);color:#14112a;font:inherit;font-weight:600;font-size:13.5px;white-space:nowrap}
+.mbtn.sec{background:var(--key);color:var(--text);border:1px solid var(--edge)}
+.mbtn:active{transform:scale(.97)}
+#scanlist{display:flex;flex-direction:column;gap:6px;max-height:130px;overflow-y:auto}
+.tvitem{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-radius:14px;background:var(--key);border:1px solid var(--edge);color:var(--text);font-size:14px}
+.tvitem span{color:var(--ok);font-size:12px;font-weight:600}
+.tvitem:active{border-color:var(--acc);background:var(--key-hi)}
+.mhelp{font-size:12px;color:var(--mute);line-height:1.4}
+
+@media (max-height:340px){
+  body{gap:6px;padding-top:max(6px,env(safe-area-inset-top));padding-bottom:max(6px,env(safe-area-inset-bottom))}
+  #main{grid-template-columns:72px 1fr 72px;gap:8px}
+  .key svg{width:24px;height:24px}.key{border-radius:18px}
+  #top{height:34px}#status,.ico{height:34px}.ico{width:34px;border-radius:17px}
+}
+</style></head><body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8.5a1 1 0 0 1-1 1h-4.5V14h-5v6.5H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-kb" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7.5 14h9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-scroll" viewBox="0 0 24 24"><path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-tv" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 20h8M12 17v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-bs" viewBox="0 0 24 24"><path d="M9 6h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-6-6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-enter" viewBox="0 0 24 24"><path d="M19 5v7a2 2 0 0 1-2 2H5M9 10l-4 4 4 4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div id="top">
+  <div id="status" title="Ketuk untuk atur IP TV"><div id="dot" class="wait"></div><div id="msg">Menyiapkan koneksi TV...</div></div>
+  <button class="ico" id="inv" aria-label="Balik arah scroll"><svg><use href="#i-scroll"/></svg></button>
+  <button class="ico" id="kbtn" aria-label="Keyboard"><svg><use href="#i-kb"/></svg></button>
+  <button class="ico" id="tvbtn" aria-label="Cari / Atur IP TV"><svg><use href="#i-tv"/></svg></button>
+</div>
+
+<div id="kbbar">
+  <input id="kb" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" placeholder="Ketik di sini, teks muncul di TV">
+  <button class="ico" id="bs" aria-label="Hapus"><svg><use href="#i-bs"/></svg></button>
+  <button class="ico" id="en" aria-label="Enter"><svg><use href="#i-enter"/></svg></button>
+</div>
+
+<div id="main">
+  <div class="rail">
+    <button class="key" data-k="BACK"><svg><use href="#i-back"/></svg><span>Kembali</span></button>
+    <button class="key" data-k="HOME"><svg><use href="#i-home"/></svg><span>Home</span></button>
+  </div>
+
+  <div id="pad">
+    <div id="hint">
+      <div><b>Geser 1 jari untuk gerakkan kursor</b>Ketuk sekali untuk klik</div>
+      <div><b>Geser 2 jari untuk scroll</b>Ketuk 2 jari untuk kembali</div>
+      <div><b>Geser 3 jari untuk seret</b>Jari ditahan sampai dilepas</div>
+    </div>
+    <div id="fingers"></div>
+    <div id="toast"></div>
+  </div>
+
+  <div class="rail">
+    <div id="rocker">
+      <button data-k="VOLUMEUP" aria-label="Volume naik"><svg><use href="#i-plus"/></svg><span>Vol</span></button>
+      <button data-k="MUTE" id="mute" aria-label="Mute"><svg><use href="#i-mute"/></svg></button>
+      <button data-k="VOLUMEDOWN" aria-label="Volume turun"><svg><use href="#i-minus"/></svg><span>Vol</span></button>
+    </div>
+  </div>
+</div>
+<div id="glow"></div>
+
+<!-- Modal Auto-Scan & Input IP TV Manual -->
+<div id="tvmodal">
+  <div class="mcard">
+    <div class="mhead">
+      <b>Koneksi TV LG webOS</b>
+      <button class="mclose" id="mclose">Tutup</button>
+    </div>
+    <div class="mrow">
+      <button class="mbtn sec" id="scanbtn" style="flex:1">Auto-Scan TV di WiFi</button>
+    </div>
+    <div id="scanlist"></div>
+    <div class="mrow">
+      <input class="minp" id="ipinp" placeholder="Atau ketik IP TV (cth: 192.168.1.20)" inputmode="decimal">
+      <button class="mbtn" id="saveip">Sambung</button>
+    </div>
+    <div class="mhelp">
+      Pastikan HP & TV LG di jaringan WiFi yang sama. Saat pertama nyambung, lihat layar TV dan pilih <b>YA / OK</b>.
+    </div>
+  </div>
+</div>
+
+<script>
+var $ = function (id) { return document.getElementById(id); };
+var pad = $('pad'), fingers = $('fingers'), dot = $('dot'), msg = $('msg'), glow = $('glow'), toastEl = $('toast');
+var tvmodal = $('tvmodal'), ipinp = $('ipinp'), scanlist = $('scanlist'), scanbtn = $('scanbtn');
+var scrollSign = 1;
+try { scrollSign = localStorage.getItem('scrollSign') === '-1' ? -1 : 1; } catch (e) {}
+$('inv').classList.toggle('act', scrollSign === -1);
+
+/* ---------- Landscape ---------- */
+var rot = false;
+function layout() {
+  var portrait = window.innerHeight > window.innerWidth;
+  var de = document.documentElement;
+  if (portrait) {
+    rot = true; de.classList.add('rot');
+    document.body.style.width = window.innerHeight + 'px';
+    document.body.style.height = window.innerWidth + 'px';
+  } else {
+    rot = false; de.classList.remove('rot');
+    document.body.style.width = ''; document.body.style.height = '';
+  }
+}
+window.addEventListener('resize', layout);
+window.addEventListener('orientationchange', function () { setTimeout(layout, 120); });
+layout();
+
+/* ---------- Komunikasi dengan Native AndroidBridge ---------- */
+function send(o) {
+  if (window.AndroidBridge) {
+    window.AndroidBridge.sendCmd(JSON.stringify(o));
+  }
+}
+function buzz(n) {
+  try {
+    if (window.AndroidBridge) window.AndroidBridge.vibrate(n || 8);
+    else if (navigator.vibrate) navigator.vibrate(n || 8);
+  } catch (e) {}
+}
+var toastT;
+function toast(t) { toastEl.textContent = t; toastEl.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(function () { toastEl.classList.remove('show'); }, 1600); }
+
+window.onNativeMsg = function (m) {
+  if (!m) return;
+  if (m.t === 'status') {
+    dot.className = m.ok ? 'ok' : 'wait';
+    msg.textContent = m.msg;
+  } else if (m.t === 'need_ip') {
+    openModal(true);
+  } else if (m.t === 'scan_result') {
+    scanbtn.textContent = 'Auto-Scan TV di WiFi';
+    scanbtn.disabled = false;
+    renderScanList(m.ips || []);
+  }
+};
+
+function openModal(autoScan) {
+  if (window.AndroidBridge) {
+    var saved = window.AndroidBridge.getSavedIp();
+    if (saved) ipinp.value = saved;
+  }
+  tvmodal.classList.add('show');
+  if (autoScan) triggerScan();
+}
+function closeModal() {
+  tvmodal.classList.remove('show');
+  ipinp.blur();
+}
+function triggerScan() {
+  scanbtn.textContent = 'Memindai jaringan WiFi...';
+  scanbtn.disabled = true;
+  scanlist.innerHTML = '<div class="mhelp">Mencari TV LG (SSDP & Port 3001/3000)...</div>';
+  if (window.AndroidBridge) window.AndroidBridge.scanTv();
+}
+function renderScanList(ips) {
+  scanlist.innerHTML = '';
+  if (!ips.length) {
+    scanlist.innerHTML = '<div class="mhelp">Tidak ada TV LG yang terdeteksi otomatis. Silakan masukkan IP manual di bawah.</div>';
+    return;
+  }
+  ips.forEach(function (ip) {
+    var d = document.createElement('div');
+    d.className = 'tvitem';
+    d.innerHTML = '<b>TV LG (' + ip + ')</b><span>Pilih</span>';
+    d.addEventListener('click', function () {
+      ipinp.value = ip;
+      connectToIp(ip);
+    });
+    scanlist.appendChild(d);
+  });
+}
+function connectToIp(ip) {
+  if (!ip) return;
+  if (window.AndroidBridge) window.AndroidBridge.setTvIp(ip);
+  closeModal();
+}
+
+$('tvbtn').addEventListener('click', function () { openModal(false); });
+$('status').addEventListener('click', function () { openModal(false); });
+$('mclose').addEventListener('click', closeModal);
+$('scanbtn').addEventListener('click', triggerScan);
+$('saveip').addEventListener('click', function () { connectToIp(ipinp.value.trim()); });
+ipinp.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') { e.preventDefault(); connectToIp(ipinp.value.trim()); }
+});
+
+/* ---------- Trackpad ---------- */
+function pt(t) { return rot ? { x: t.clientY, y: window.innerWidth - t.clientX } : { x: t.clientX, y: t.clientY }; }
+function avg(e) {
+  var x = 0, y = 0, n = e.touches.length;
+  for (var i = 0; i < n; i++) { var p = pt(e.touches[i]); x += p.x; y += p.y; }
+  return { x: x / n, y: y / n };
+}
+function moveGlow(c) { glow.style.transform = 'translate(' + c.x + 'px,' + c.y + 'px)'; }
+
+var g = null;
+pad.addEventListener('touchstart', function (e) {
+  e.preventDefault();
+  var n = e.touches.length, c = avg(e);
+  if (!g) g = { t0: Date.now(), max: n, moved: 0, drag: false, locked: false, ax: 0, ay: 0 };
+  g.max = Math.max(g.max, n); g.x = c.x; g.y = c.y; g.ax = 0; g.ay = 0;
+  if (n >= 3 && !g.locked) { g.drag = true; send({ t: 'move', dx: 0, dy: 0, down: 1 }); buzz(14); }
+  pad.classList.add('on'); glow.classList.add('on'); moveGlow(c);
+  fingers.textContent = n + ' jari';
+}, { passive: false });
+
+pad.addEventListener('touchmove', function (e) {
+  e.preventDefault();
+  if (!g) return;
+  var n = e.touches.length, c = avg(e), dx = c.x - g.x, dy = c.y - g.y;
+  g.x = c.x; g.y = c.y; g.moved += Math.abs(dx) + Math.abs(dy);
+  moveGlow(c);
+  if (g.locked) return;
+  if (g.drag && n < 3) { send({ t: 'move', dx: 0, dy: 0, down: 0 }); g.drag = false; g.locked = true; return; }
+  if (n >= 3) {
+    var k = 1.4 + Math.min(Math.hypot(dx, dy) / 8, 2.5);
+    g.ax += dx * k; g.ay += dy * k;
+    var sx = Math.trunc(g.ax), sy = Math.trunc(g.ay);
+    if (sx || sy) { g.ax -= sx; g.ay -= sy; send({ t: 'move', dx: sx, dy: sy, down: 1 }); }
+  } else if (n === 2) {
+    g.ay += dy * 2 * scrollSign;
+    var s = Math.trunc(g.ay);
+    if (s) { g.ay -= s; send({ t: 'scroll', dx: 0, dy: s }); }
+  } else if (n === 1) {
+    var k2 = 1.4 + Math.min(Math.hypot(dx, dy) / 8, 2.5);
+    g.ax += dx * k2; g.ay += dy * k2;
+    var mx = Math.trunc(g.ax), my = Math.trunc(g.ay);
+    if (mx || my) { g.ax -= mx; g.ay -= my; send({ t: 'move', dx: mx, dy: my, down: 0 }); }
+  }
+}, { passive: false });
+
+function endTouch(e) {
+  e.preventDefault();
+  if (!g) return;
+  if (e.touches.length > 0) { var c = avg(e); g.x = c.x; g.y = c.y; g.ax = 0; g.ay = 0; fingers.textContent = e.touches.length + ' jari'; return; }
+  if (g.drag) send({ t: 'move', dx: 0, dy: 0, down: 0 });
+  else if (!g.locked && Date.now() - g.t0 < 280 && g.moved < 12) {
+    if (g.max === 1) { send({ t: 'tap' }); buzz(8); }
+    else if (g.max === 2) { send({ t: 'key', name: 'BACK' }); buzz(8); }
+  }
+  g = null; pad.classList.remove('on'); glow.classList.remove('on'); fingers.textContent = '';
+}
+pad.addEventListener('touchend', endTouch, { passive: false });
+pad.addEventListener('touchcancel', endTouch, { passive: false });
+
+/* ---------- Tombol ---------- */
+document.querySelectorAll('[data-k]').forEach(function (b) {
+  b.addEventListener('click', function () { send({ t: 'key', name: b.getAttribute('data-k') }); buzz(10); });
+});
+$('inv').addEventListener('click', function () {
+  scrollSign = -scrollSign;
+  try { localStorage.setItem('scrollSign', String(scrollSign)); } catch (e) {}
+  $('inv').classList.toggle('act', scrollSign === -1);
+  toast(scrollSign === -1 ? 'Scroll dibalik' : 'Scroll normal');
+});
+
+/* ---------- Keyboard ---------- */
+var kb = $('kb'), kbbar = $('kbbar'), last = '';
+$('kbtn').addEventListener('click', function () {
+  var on = kbbar.classList.toggle('show');
+  $('kbtn').classList.toggle('act', on);
+  if (on) kb.focus(); else kb.blur();
+});
+kb.addEventListener('input', function () {
+  var v = kb.value, i = 0;
+  while (i < last.length && i < v.length && last[i] === v[i]) i++;
+  var del = last.length - i;
+  if (del > 0) send({ t: 'del', count: del });
+  var add = v.slice(i);
+  if (add) send({ t: 'text', text: add });
+  last = v;
+});
+kb.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') { e.preventDefault(); send({ t: 'enter' }); kb.value = ''; last = ''; }
+  else if (e.key === 'Backspace' && kb.value === '') send({ t: 'del', count: 1 });
+});
+$('bs').addEventListener('click', function () { send({ t: 'del', count: 1 }); if (kb.value) { kb.value = kb.value.slice(0, -1); last = kb.value; } kb.focus(); });
+$('en').addEventListener('click', function () { send({ t: 'enter' }); kb.value = ''; last = ''; kb.focus(); });
+</script></body></html>
